@@ -284,7 +284,8 @@ public class EWrapperImpl implements EWrapper {
 		}
 		
 		Request r=DownloadMinuteData.req_map.get(reqId);
-		Contract contract=r.getContract();
+		Contract contract=null;
+		if (r!=null) contract=r.getContract();
 		Date d=null;
 		SimpleDateFormat form = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
 		try{
@@ -475,14 +476,22 @@ public class EWrapperImpl implements EWrapper {
 	@Override
 	public void error(int id, int errorCode, String errorMsg) {
 		System.out.println("Error. Id: " + id + ", Code: " + errorCode + ", Msg: " + errorMsg + "\n");
-		if (errorCode==162 || errorCode==200) {
-			if (!DownloadMinuteData.no_data) {
-				DownloadMinuteData.no_data=true;
-				DownloadMinuteData.error_request_id=id;
-			}
+		if (errorCode==162) {
+//			if (!DownloadMinuteData.no_data) {
+//				DownloadMinuteData.no_data=true;
+//				DownloadMinuteData.error_request_id=id;
+//			}
 		}else if (errorCode==322) {
 			Request r=DownloadMinuteData.req_map.remove(id);
-			DownloadMinuteData.err_req_list.add(r);
+			if (r!=null) {
+				DownloadMinuteData.err_req_list.add(r);
+			}
+			
+		}else if (errorCode==200) {
+			Request r=DownloadMinuteData.req_map.get(id);
+			if (r!=null && r.getContract()!=null) {
+				System.out.println(r.getContract().symbol());
+			}
 		}
 	}
 	//! [error]

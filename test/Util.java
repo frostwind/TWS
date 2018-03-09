@@ -221,6 +221,6 @@ public class Util {
 	
 	
 	public static void main(String[] args) {
-		System.out.println(calculateComplexProfit("TSLA","SMART"));
+		System.out.println(calculateComplexProfit("AMD","SMART"));
 	}
 }

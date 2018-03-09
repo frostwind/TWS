@@ -56,7 +56,9 @@ public class DownloadMinuteData {
 		final EClientSocket m_client = wrapper.getClient();
 		final EReaderSignal m_signal = wrapper.getSignal();
 		//! [connect]
-		m_client.eConnect("127.0.0.1", 7496, 0);//host port client_id
+//		m_client.eConnect("127.0.0.1", 7496, 0);//host port client_id
+		
+		m_client.eConnect("127.0.0.1", 4001, 0);//host port client_id
 		//! [connect]
 		//! [ereader]
 		final EReader reader = new EReader(m_client, m_signal);        
@@ -84,11 +86,12 @@ public class DownloadMinuteData {
         //bracketSample(wrapper.getClient(), wrapper.getCurrentOrderId());
 		//bulletins(wrapper.getClient());
         //reutersFundamentals(wrapper.getClient());
-        //marketDataType(wrapper.getClient());
+//        marketDataType(wrapper.getClient());
         historicalDataRequests(wrapper.getClient());
+//        placeOrder(wrapper.getClient());
         
         
-        //accountOperations(wrapper.getClient());
+//        accountOperations(wrapper.getClient());
 		
         out.flush();
 		out.close();
@@ -97,6 +100,28 @@ public class DownloadMinuteData {
 		m_client.eDisconnect();
 		
 	}
+	
+	private static void accountInfo(EClientSocket client) {
+//		client.reqAccountSummary(arg0, arg1, arg2);
+	}
+	private static void placeOrder(EClientSocket client) {
+		Contract contract = new Contract();
+		contract.symbol("MSFT");
+		contract.secType("STK");
+		contract.currency("USD");
+		contract.exchange("SMART");
+		//Specify the Primary Exchange attribute to avoid contract ambiguity
+		contract.primaryExch("ISLAND");
+		
+		Order order = new Order();
+		order.action("SELL");
+		order.orderType("MKT");
+		order.totalQuantity(1);
+		client.placeOrder(1, contract, OrderSamples.MarketOrder("SELL", 1));
+
+		
+	}
+	
 	
 	private static void orderOperations(EClientSocket client, int nextOrderId) throws InterruptedException {
 		
@@ -262,6 +287,7 @@ public class DownloadMinuteData {
 		}
 		*/
 		
+		/*
 		for (int i=0;i<Util.us_symbols.length;i++) {
 			Contract contract = new Contract();
 			contract.symbol(Util.us_symbols[i]);
@@ -270,6 +296,7 @@ public class DownloadMinuteData {
 			contract.exchange(Util.US_EXCHANGE);
 			contracts.add(contract);
 		}
+		*/
 		
 		/*
 		for (int i=0;i<Util.dow_symbols.length;i++) {
@@ -288,6 +315,7 @@ public class DownloadMinuteData {
 			contract.secType("STK");
 			contract.currency("USD");
 			contract.exchange(Util.US_EXCHANGE);
+			contract.primaryExch("ISLAND");
 			contracts.add(contract);
 		}
 		
@@ -346,13 +374,14 @@ public class DownloadMinuteData {
 //					out.flush();
 				    Thread.sleep(3000);
 					cal.add(shiftUnit, -unit);
-					if (no_data) {
-						Contract c=req_map.get(error_request_id).getContract();
-						if (c.symbol().equals(contract.symbol()) && c.exchange().equals(contract.exchange())) {
-							no_data=false;
-							break;
-						}
-					}
+					
+//					if (no_data) {
+//						Contract c=req_map.get(error_request_id).getContract();
+//						if (c.symbol().equals(contract.symbol()) && c.exchange().equals(contract.exchange())) {
+//							no_data=false;
+//							break;
+//						}
+//					}
 					
 				}
 			}else {
@@ -374,16 +403,16 @@ public class DownloadMinuteData {
 //					out.flush();
 				    Thread.sleep(3000);
 					cal.add(shiftUnit, -unit);
-					if (no_data) {
-						Contract c=req_map.get(error_request_id).getContract();
-						if (c.symbol().equals(contract.symbol()) && c.exchange().equals(contract.exchange())) {
-							no_data=false;
-							break;
-						}
-					}
+//					if (no_data) {
+//						Contract c=req_map.get(error_request_id).getContract();
+//						if (c.symbol().equals(contract.symbol()) && c.exchange().equals(contract.exchange())) {
+//							no_data=false;
+//							break;
+//						}
+//					}
 				}
 				cal=Calendar.getInstance();
-				cal.add(Calendar.YEAR, -15);
+				cal.add(Calendar.YEAR, -2);
 				Date many_years_ago=cal.getTime();
 				cal.setTime(min_date);
 				while (many_years_ago.before(cal.getTime())) {
@@ -401,18 +430,21 @@ public class DownloadMinuteData {
 //					out.flush();
 				    Thread.sleep(2000);
 					cal.add(shiftUnit, -unit);
-					if (no_data) {
-						Contract c=req_map.get(error_request_id).getContract();
-						if (c.symbol().equals(contract.symbol()) && c.exchange().equals(contract.exchange())) {
-							no_data=false;
-							break;
-						}
-					}
+//					if (no_data) {
+//						Contract c=req_map.get(error_request_id).getContract();
+//						if (c.symbol().equals(contract.symbol()) && c.exchange().equals(contract.exchange())) {
+//							no_data=false;
+//							break;
+//						}
+//					}
 				}
 			}
 			while (!err_req_list.isEmpty()) {
 				Request r=err_req_list.remove(0);
-				client.reqHistoricalData(r.getId(), r.getContract(), r.getFormatted(), r.getDuration(), r.getBarSize(), "TRADES", 1, 1, null);
+				if (r!=null && r.getContract()!=null) {
+					client.reqHistoricalData(r.getId(), r.getContract(), r.getFormatted(), r.getDuration(), r.getBarSize(), "TRADES", 1, 1, null);
+				}
+				
 				Thread.sleep(5000);
 			}
 			

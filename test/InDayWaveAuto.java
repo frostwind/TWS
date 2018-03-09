@@ -437,7 +437,7 @@ public class InDayWaveAuto {
 			}else {
 				boolean s=false;
 				if (status.equals("BULL")) {
-					if (prices[i].getClose()/buyprice<1-0.001*stop_loss_step || (prices[i].getClose()/prices[i].getOpen()<1-0.001*stop_loss_step && getBarSize(i,prices)>revert_trend_step*0.1)) {
+					if (prices[i-1].getClose()/buyprice<1-0.001*stop_loss_step || (prices[i-1].getClose()/prices[i-1].getOpen()<1-0.001*stop_loss_step && getBarSize(i-1,prices)>revert_trend_step*0.1)) {
 //					if ((prices[i].getClose()/prices[i].getOpen()<0.995 && getBarSize(i,prices)>0.8)) {
 						s=true;
 					}
@@ -449,9 +449,9 @@ public class InDayWaveAuto {
 				if (s) {
 					
 					trades++;
-					sellprice=prices[i].getClose();
+					sellprice=prices[i-1].getClose();
 					sellday=i;
-					selldate=prices[i].getTrade_date();
+					selldate=prices[i-1].getTrade_date();
 					sellmacd=macd[i];
 					double gain=0.0;
 					if (status.equals("BULL")) {
@@ -591,7 +591,7 @@ public class InDayWaveAuto {
 		Connection conn=getConnection();
 		List<String[]> res=new ArrayList<String[]>();
 		try {
-			PreparedStatement pstmt=conn.prepareStatement("select distinct symbol, exchange from hist_price where barsize='15 mins' and symbol  not in ('BZUN','SQ','MU','ZSAN') ");
+			PreparedStatement pstmt=conn.prepareStatement("select distinct symbol, exchange from hist_price where barsize='15 mins' and symbol  not in ('AMD') ");
 			ResultSet rs= pstmt.executeQuery();
 			while (rs.next()) {
 				res.add(new String[] {rs.getString(1),rs.getString(2)});
