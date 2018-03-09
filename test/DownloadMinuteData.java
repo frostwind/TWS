@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.StringReader;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -96,6 +97,14 @@ public class DownloadMinuteData {
         out.flush();
 		out.close();
 		Thread.sleep(20000);
+		if (wrapper.saveHistPrice!=null) {
+			try {
+				wrapper.saveHistPrice.executeBatch();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 		wrapper.closeConnection();
 		m_client.eDisconnect();
 		

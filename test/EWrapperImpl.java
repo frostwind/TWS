@@ -31,6 +31,8 @@ public class EWrapperImpl implements EWrapper {
 	
 	//! [socket_declare]
 	private Connection conn=null;
+	public PreparedStatement saveHistPrice=null;
+	private int saveHistPrice_cnt=0;
 	private EReaderSignal readerSignal;
 	private EClientSocket clientSocket;
 	protected int currentOrderId = -1;
@@ -307,18 +309,24 @@ public class EWrapperImpl implements EWrapper {
 		
 		
 		try {
-			PreparedStatement pstmt=conn.prepareStatement("replace into hist_price (symbol,exchange,barsize,trade_date,open,high,low,close,volumn) values (?,?,?,?,?,?,?,?,?)");
+			if (saveHistPrice==null) {
+				saveHistPrice=conn.prepareStatement("replace into hist_price (symbol,exchange,barsize,trade_date,open,high,low,close,volumn) values (?,?,?,?,?,?,?,?,?)");
+			}
+			
 			int index=1;
-			pstmt.setString(index++, contract.symbol());
-			pstmt.setString(index++, contract.exchange());
-			pstmt.setString(index++, barSize);
-			pstmt.setTimestamp(index++, new java.sql.Timestamp(d.getTime()));
-			pstmt.setDouble(index++, open);
-			pstmt.setDouble(index++, high);
-			pstmt.setDouble(index++, low);
-			pstmt.setDouble(index++, close);
-			pstmt.setInt(index++, volume);
-			pstmt.execute();
+			saveHistPrice.setString(index++, contract.symbol());
+			saveHistPrice.setString(index++, contract.exchange());
+			saveHistPrice.setString(index++, barSize);
+			saveHistPrice.setTimestamp(index++, new java.sql.Timestamp(d.getTime()));
+			saveHistPrice.setDouble(index++, open);
+			saveHistPrice.setDouble(index++, high);
+			saveHistPrice.setDouble(index++, low);
+			saveHistPrice.setDouble(index++, close);
+			saveHistPrice.setInt(index++, volume);
+			saveHistPrice.addBatch();
+			if (saveHistPrice_cnt++%1000==0) {
+				saveHistPrice.executeBatch();
+			}
 			
 			
 		} catch (SQLException e) {
