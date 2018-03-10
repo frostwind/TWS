@@ -89,7 +89,15 @@ public class InDayWaveAuto {
 		
 	}
 	public static void analyzeStock(String symbol,String exchange,boolean list_detail,Date start,Date end,String barsize) {
+		Calendar cal=Calendar.getInstance();
+		cal.setTime(start);
+		Date old_start=cal.getTime();
+		cal.setTime(end);
+		Date old_end=cal.getTime();
 //		Double[] prices=getPriceFromFile(symbol);
+		
+		
+		
 		Price[] prices=getPriceFromDB(symbol,exchange,start,end,barsize);
 		boolean vol=false;
 		if (prices!=null && prices.length>0) {
@@ -159,7 +167,7 @@ public class InDayWaveAuto {
 				e.printStackTrace();
 			}
 		}
-		verifyStrategy(symbol,exchange,start,end);
+		chooseMostProfitStrategy(symbol,exchange,start,end);
 		
 	
 		
@@ -170,14 +178,17 @@ public class InDayWaveAuto {
 		
 		
 	}
-	public static void verifyStrategy(String symbol,String exchange,Date start,Date end) {
+	public static void chooseMostProfitStrategy(String symbol,String exchange,Date start,Date end) {
 		Connection conn=Util.getConnection();
 		if (conn==null) return;
 		PreparedStatement pstmt;
-		Date s_date=start;
-		Date e_date=end;
+		Calendar cal=Calendar.getInstance();
+		cal.setTime(start);
+		Date s_date=cal.getTime();
+		cal.setTime(end);
+		Date e_date=cal.getTime();
 		try {
-			pstmt = conn.prepareStatement("select min(date(sell_date)),max(date(sell_date)) from detail_gain where symbol=? and exchange=? and sell_date between ? and ?");
+			pstmt = conn.prepareStatement("select min(date(buy_date)),max(date(buy_date)) from detail_gain where symbol=? and exchange=? and buy_date between ? and ?");
 			int index=1;
 			pstmt.setString(index++, symbol);
 			pstmt.setString(index++, exchange);
@@ -193,7 +204,7 @@ public class InDayWaveAuto {
 			List<Date> list=new ArrayList<Date>();
 			while (start.before(end)) {
 				list.add(start);
-				Calendar cal=Calendar.getInstance();
+				cal=Calendar.getInstance();
 				cal.setTime(start);
 				cal.add(Calendar.DAY_OF_YEAR, 1);
 				start=cal.getTime();
@@ -224,13 +235,13 @@ public class InDayWaveAuto {
 //			PreparedStatement pstmt2=conn.prepareStatement("select * from (select sum(gain_percent),count(*),strategy from detail_gain where symbol=? and exchange=? and sell_date between ? and ? group by strategy order by sum(gain_percent) desc) t limit 1");
 			
 			PreparedStatement pstmt2=conn.prepareStatement("select * from (select sum(gain_percent),sum(trades),strategy from detail_gain_agg_month where symbol=? and exchange=? and trade_date between ? and ? group by strategy order by sum(gain_percent) desc) t limit 1");
-			PreparedStatement pstmt3=conn.prepareStatement("select symbol,exchange,hold_days,buy_date,sell_date,gain_percent,sellprice,buyprice,strategy from detail_gain where  symbol=? and exchange=? and sell_date between ? and ? and strategy=? order by sell_date");
+			PreparedStatement pstmt3=conn.prepareStatement("select symbol,exchange,hold_days,buy_date,sell_date,gain_percent,sellprice,buyprice,strategy from detail_gain where  symbol=? and exchange=? and buy_date between ? and ? and strategy=? order by buy_date");
 			PreparedStatement pstmt4=conn.prepareStatement("insert into revised_detail_gain ( symbol,exchange,hold_days,buy_date,sell_date,gain_percent,sellprice,buyprice,strategy)  values (?,?,?,?,?,?,?,?,?)");
 			int batch_count=0;
 			Map<Date,Integer> monthly_gain=new HashMap<Date,Integer>();
 			for (int i=0;i<list.size();i++) {
 				end=list.get(i);
-				Calendar cal=Calendar.getInstance();
+				cal=Calendar.getInstance();
 				cal.setTime(end);
 				cal.add(Calendar.DAY_OF_YEAR, -365);
 				start=cal.getTime();
@@ -397,18 +408,50 @@ public class InDayWaveAuto {
 		double buymacd=0.0;
 		double sellmacd=0.0;
 		SimpleDateFormat df=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		
+		
 
 		conn=getConnection();
+		
+		PreparedStatement pstmt;
+		Date min_date=null;
+		Date max_date=null;
+		try {
+			pstmt = conn.prepareStatement("select min(date(buy_date)),max(date_sub(date(buy_date),interval 2 day)) from detail_gain where symbol=? and exchange=? and strategy=?");
+			int index=1;
+			pstmt.setString(index++, symbol);
+			pstmt.setString(index++, exchange);
+			String strategy="BULL-"+bar_num+"-"+stop_loss_step+"-"+revert_trend_step;
+//			System.out.println(strategy);
+			pstmt.setString(index++, strategy);
+			ResultSet rs=pstmt.executeQuery();
+			if (rs.next()) {
+				min_date=rs.getTimestamp(1);
+				max_date=rs.getTimestamp(2);
+//				System.out.println("========="+min_date+" "+max_date);
+			}
+		} catch (SQLException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		
 		int trades=0;
 		PreparedStatement batchInsert=null;
 		int count=0;
 		try {
-			batchInsert=conn.prepareStatement("insert into detail_gain values (?,?,?,?,?,?,?,?,?,?,?)");
+			batchInsert=conn.prepareStatement("replace into detail_gain values (?,?,?,?,?,?,?,?,?,?,?)");
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		int skipped=0;
 		for (int i=1;i<prices.length;i++) {
+			Price p=prices[i];
+			if (max_date!=null && p.getTrade_date().before(max_date)) {
+				skipped++;
+				continue;
+			}
 			if (status.equals("")) {
 				boolean bull=true;
 				for (int x=bar_num;x>=1 && i-x>=0;x--) {
@@ -477,6 +520,7 @@ public class InDayWaveAuto {
 				}
 			}
 		}
+//		System.out.println("skipped:"+skipped);
 		try {
 			batchInsert.executeBatch();
 		} catch (SQLException e) {
@@ -514,11 +558,12 @@ public class InDayWaveAuto {
 			pstmt.setString(1, symbol);
 			pstmt.setString(2, exchange);
 			pstmt.execute();
+			/*
 			pstmt = conn.prepareStatement("delete from detail_gain where  symbol=? and exchange=?");
 			pstmt.setString(1, symbol);
 			pstmt.setString(2, exchange);
 			pstmt.execute();
-			
+			*/
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -591,7 +636,7 @@ public class InDayWaveAuto {
 		Connection conn=getConnection();
 		List<String[]> res=new ArrayList<String[]>();
 		try {
-			PreparedStatement pstmt=conn.prepareStatement("select distinct symbol, exchange from hist_price where barsize='15 mins' and symbol  not in ('AMD') ");
+			PreparedStatement pstmt=conn.prepareStatement("select distinct symbol, exchange from hist_price where barsize='15 mins' and symbol  not in ('AMD') and symbol in (select symbol from stock where category='SP500') ");
 			ResultSet rs= pstmt.executeQuery();
 			while (rs.next()) {
 				res.add(new String[] {rs.getString(1),rs.getString(2)});

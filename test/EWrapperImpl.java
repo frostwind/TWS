@@ -271,10 +271,6 @@ public class EWrapperImpl implements EWrapper {
 		
 		System.out.println("HistoricalData. "+reqId+" - Date: "+date+", Open: "+open+", High: "+high+", Low: "+low+", Close: "+close+", Volume: "+volume+", Count: "+count+", WAP: "+WAP+", HasGaps: "+hasGaps);
 		saveToDB(reqId,date,open,high,low,close,volume,count,WAP,hasGaps);
-		
-		
-		
-		
 	}
 	
 	public void saveToDB(int reqId, String date, double open,
